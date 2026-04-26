@@ -3,353 +3,719 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title>PROJECT: ERG ARCHIVE</title>
     
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 
+    <style id="dynamic-font"></style>
     <style>
-        @font-face {
-            font-family: 'Artemis';
-            src: url('./Artemis.ttf') format('truetype');
-            font-weight: normal; font-style: normal;
-        }
-
+        /* === V6 SF 테마 컬러 및 기본 설정 === */
         :root {
             --theme-color: #5b73d6;
             --theme-glow: rgba(91, 115, 214, 0.4);
-            --bg-color: #050810;
-            --panel-bg: rgba(10, 14, 25, 0.75);
-            --text-main: #d0d8e8;
-            --text-muted: #6b7a99;
+            --bg-deep: #050810;
+            --bg-panel: rgba(10, 14, 25, 0.75);
+            --moon-light: #d0d8e8;
+            --moon-dim: #6b7a99;
+            --voyager-gold: #5b73d6; /* 기존 골드색을 SF 블루로 매핑 */
+            --voyager-glow: 0 0 15px var(--theme-glow);
+            --border-line: 1px solid rgba(91, 115, 214, 0.2);
+            --border-gold: 1px solid rgba(91, 115, 214, 0.4);
+            --eng-font-family: 'Playfair Display', 'Pretendard', serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            background-color: var(--bg-deep); 
+            background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070');
+            background-size: cover; background-position: center;
+            color: var(--moon-light); 
+            overflow: hidden; 
+            height: 100vh; display: flex; width: 100vw; justify-content: center; align-items: center;
+            backdrop-filter: brightness(0.4);
+        }
+
+        .eng-font { font-family: var(--eng-font-family) !important; }
+        .term-font { font-family: 'Share Tech Mono', 'Pretendard', monospace; }
+
+        /* 인트로 스크린 */
+        #intro-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-deep); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; cursor:pointer; transition:opacity 1.5s; }
+        .intro-text { font-size:1.4rem; color:var(--theme-color); text-align:center; line-height:2; text-shadow:var(--voyager-glow); white-space:pre-wrap; margin-bottom: 20px;}
+        .type-cursor { display:inline-block; width:10px; height:20px; background:var(--theme-color); vertical-align:middle; margin-left:4px; animation:blink 1s infinite; }
+        @keyframes blink { 0%, 100% {opacity:1;} 50% {opacity:0;} }
+
+        /* 메인 패널 (V6 UI) */
+        #app { display:none; width: 85vw; max-width: 1100px; height: 80vh; background: var(--bg-panel); border: 1px solid var(--theme-color); border-radius: 12px; box-shadow: 0 0 30px var(--theme-glow), inset 0 0 20px var(--theme-glow); backdrop-filter: blur(15px); flex-direction:row; position: relative; }
+        
+        /* 사이드바 */
+        .sidebar { width: 260px; flex-shrink: 0; border-right: var(--border-line); padding: 30px 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .logo { font-size: 1.2rem; color: var(--theme-color); text-align: center; cursor: pointer; margin-bottom: 25px; font-weight: bold; letter-spacing: 1px; }
+        
+        /* BGM */
+        .bgm-widget { background: transparent; border: 1px dashed var(--theme-glow); border-radius: 4px; padding: 10px; margin-bottom: 20px; text-align: center; display: none; }
+        .bgm-title { font-size: 0.75rem; color: var(--moon-dim); margin-bottom: 8px; letter-spacing: 1px; }
+
+        /* 카테고리 메뉴 (스크립트 생성 클래스) */
+        #category-list { flex: 1; overflow-y: auto; margin-bottom: 20px; }
+        .nav-item-wrapper { margin-bottom: 0.5rem; }
+        .nav-item { padding: 8px 10px; cursor: pointer; color: var(--moon-dim); font-size: 0.95rem; border-radius: 4px; display: flex; align-items: center; transition: 0.2s; letter-spacing: 1px; }
+        .nav-item:hover { color: var(--theme-color); }
+        .nav-item.active { color: var(--theme-color); font-weight: bold; text-shadow: 0 0 8px var(--theme-glow); }
+        .nav-toggle { margin-right: 8px; font-size: 0.7rem; color: var(--moon-dim); transition: 0.2s; width: 12px; text-align: center; }
+        .nav-toggle.open { transform: rotate(90deg); color: var(--theme-color); }
+
+        /* 하단 정보 (시간 & 관리자 버튼) */
+        .bottom-info { text-align: center; border-top: var(--border-line); padding-top: 20px; }
+        .sys-time { border: 1px dashed var(--theme-glow); padding: 0.5rem; font-size: 0.8rem; color: var(--moon-dim); margin-bottom: 1rem; letter-spacing: 2px; }
+        .btn-ui { width: 100%; padding: 0.5rem; background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color); border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.3s; margin-bottom: 5px; }
+        .btn-ui:hover { background: var(--theme-color); color: #000; }
+        #auth-status { margin-top: 10px; }
+
+        /* 우측 콘텐츠 영역 */
+        .content-area { flex: 1; padding: 40px 50px; overflow-y: auto; position: relative; }
+        .sidebar-toggle-btn { position: absolute; top: 15px; left: 15px; z-index: 50; background: transparent; border: 1px solid var(--theme-color); color: var(--theme-color); padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .sidebar-toggle-btn:hover { background: var(--theme-color); color: #000; }
+
+        .page { display: none; max-width: 950px; margin: 0 auto; animation: fadeUp 0.5s; }
+        .page.active { display: block; }
+        @keyframes fadeUp { from{opacity:0; transform:translateY(10px);} to{opacity:1;} }
+
+        /* 페이지 공통 타이틀 */
+        .view-title { font-size: 1.5rem; color: var(--theme-color); margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+
+        /* 대문 (Home) */
+        .home-container { display: flex; flex-direction: column; align-items: center; }
+        .home-hero-img { width: 100%; max-width: 900px; height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid var(--theme-glow); margin-bottom: 30px; display: none; }
+        .home-banner { background: rgba(0,0,0,0.4); padding: 40px; text-align: left; border-radius: 8px; width: 100%; max-width: 600px; border: 1px solid var(--theme-glow); display: flex; flex-direction: column; }
+        #home-maintitle { font-size: 2rem; color: var(--theme-color); margin-bottom: 10px; font-weight: 700; letter-spacing: 2px; }
+        .home-tech-subtitle { font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--theme-color); letter-spacing: 3px; margin-bottom: 20px; }
+        #home-desc-display { font-size: 0.95rem; color: var(--moon-light); line-height: 1.8; white-space: pre-wrap; }
+
+        .home-shortcuts-wrap { margin-top: 50px; width: 100%; border-top: var(--border-line); padding-top: 40px; display: none; }
+        .home-shortcuts-title { font-size: 1.1rem; color: var(--theme-color); margin-bottom: 25px; text-align: center; letter-spacing: 2px; }
+        .home-shortcuts { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .shortcut-card { width: 180px; height: 260px; border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; background: rgba(0,0,0,0.3); }
+        .shortcut-card:hover { border-color: var(--theme-color); box-shadow: var(--voyager-glow); }
+        .shortcut-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; transition: 0.5s; }
+        .shortcut-card:hover .shortcut-img { opacity: 1; transform: scale(1.05); }
+        .shortcut-info { position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 15px 15px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); display: flex; flex-direction: column; }
+        .shortcut-cat { color: #fff; background: var(--theme-color); padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; margin-bottom: 10px; width: fit-content; }
+        .shortcut-title { color: #fff; font-size: 1.1rem; font-weight: bold; }
+
+        /* 게시판 뷰 (리스트/갤러리) */
+        .view-toggles { display: flex; gap: 5px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; border: var(--border-line); }
+        .view-btn { padding: 4px 10px; border: none; background: transparent; border-radius: 2px; color: var(--moon-dim); cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .view-btn.active { background: rgba(91, 115, 214, 0.2); color: var(--theme-color); }
+
+        #post-list-container.view-list { display: flex; flex-direction: column; }
+        #post-list-container.view-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+
+        .post-card { background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; padding: 1.5rem 0; }
+        .post-card:hover { border-color: var(--theme-color); background: rgba(0, 0, 0, 0.4); padding-left: 10px; }
+        .post-card.notice { border-color: var(--theme-color); background: rgba(91, 115, 214, 0.05); }
+        .notice-badge { font-size: 0.75rem; color: #000; background: var(--theme-color); padding: 2px 8px; border-radius: 2px; display: inline-block; margin-bottom: 6px; }
+        
+        .view-list .post-card { display: flex; align-items: center; gap: 20px; padding: 1.5rem 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .view-list .post-thumb { width: 80px; height: 80px; border-radius: 4px; object-fit: cover; }
+        .view-list .post-info-wrap { flex: 1; }
+        
+        .view-gallery .post-card { display: flex; flex-direction: column; padding: 0; border: var(--border-line); border-radius: 8px; }
+        .view-gallery .post-thumb { width: 100%; height: 160px; object-fit: cover; }
+        .view-gallery .post-info-wrap { padding: 15px; }
+
+        /* 에디터 및 폼 컨트롤 */
+        .input-control { width: 100%; padding: 10px; background: rgba(0,0,0,0.4); border: var(--border-line); color: var(--moon-light); border-radius: 4px; outline: none; margin-bottom: 10px; font-family: inherit; }
+        .input-control:focus { border-color: var(--theme-color); }
+        
+        .editor-toolbar { display: flex; gap: 6px; background: rgba(0,0,0,0.3); padding: 10px; border: var(--border-line); border-bottom: none; border-radius: 4px 4px 0 0; flex-wrap: wrap; align-items: center; }
+        .editor-toolbar button { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--moon-light); padding: 4px 10px; cursor: pointer; border-radius: 2px; font-size: 0.85rem; transition: 0.2s; }
+        .editor-toolbar button:hover { background: rgba(91, 115, 214, 0.2); color: var(--theme-color); border-color: var(--theme-color); }
+        .editor-toolbar .divider { color: var(--moon-dim); margin: 0 4px; }
+        .color-picker-wrap, .editor-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--moon-light); padding: 4px 8px; border-radius: 2px; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        .editor-select option { background: var(--bg-deep); }
+        
+        #w-content { border-radius: 0 0 4px 4px; min-height: 400px; padding: 20px; background: rgba(0,0,0,0.2); border: var(--border-line); outline: none; overflow-y: auto; line-height: 1.8; color: #fff; }
+        #w-content:focus { border-color: var(--theme-color); }
+
+        /* 공용 버튼 */
+        .btn { padding: 8px 16px; border: 1px solid var(--theme-color); color: var(--theme-color); background: none; cursor: pointer; border-radius: 4px; transition: 0.2s; font-weight: bold; }
+        .btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--voyager-glow); }
+        .btn-solid { background: var(--theme-color); color: #000; }
+        .btn-text { background: transparent; border: none; color: var(--moon-dim); cursor: pointer; padding: 4px 6px; font-size: 0.9rem; transition: 0.2s; }
+        .btn-text:hover { color: var(--theme-color); }
+
+        /* 모달창 */
+        .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(5px); }
+        .modal { background: var(--bg-panel); padding: 30px; border-radius: 8px; width: 600px; max-width: 90%; border: 1px solid var(--theme-color); max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px var(--theme-glow); }
+        .modal-label { color: var(--theme-color); font-size: 0.9rem; font-weight: bold; display: block; margin-bottom: 8px; margin-top: 15px; }
+
+        /* 스크롤바 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(91, 115, 214, 0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+
+        /* 글 본문 내부 (인용구 등) */
+        #w-content blockquote, #v-content blockquote { border-left: 4px solid var(--theme-color); background: rgba(91, 115, 214, 0.1); padding: 15px 20px; margin: 15px 0; border-radius: 0 4px 4px 0; }
+        .rich-details[open] summary::after { color: var(--theme-color); }
+        .post-link-block { color: var(--theme-color) !important; background: rgba(91, 115, 214, 0.1); border-color: rgba(91, 115, 214, 0.3); }
+        #w-content a, #v-content a { color: var(--theme-color); }
+    </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="enterSite()">
+    <div id="intro-text-display" class="intro-text"></div><span class="type-cursor"></span>
+</div>
+
+<div id="app">
+    <aside class="sidebar" id="sidebar">
+        <div id="sidebar-logo" class="logo" onclick="goHome()">SUBJECT_NAME</div>
+        
+        <div class="bgm-widget" id="bgm-widget">
+            <div id="bgm-title" class="bgm-title">BGM MODULE</div>
+            <iframe id="bgm-iframe" frameborder="0" allow="autoplay; encrypted-media" style="width:100%; height:80px; border-radius:4px;"></iframe>
+        </div>
+
+        <nav id="category-list"></nav>
+
+        <div class="bottom-info">
+            <div class="sys-time">[ SYSTEM TIME ]<br><span id="clock">00 : 00 : 00</span></div>
+            
+            <div id="admin-actions" style="display:none; flex-direction:column; gap:5px; margin-bottom:10px;">
+                <button class="btn-ui" onclick="openModal('catModal')">CATEGORY MGMT</button>
+                <button class="btn-ui" onclick="openModal('settingModal')">SYSTEM SETTING</button>
+                <button class="btn-ui" id="btn-admin-write" onclick="goWrite()" style="display:none; background:var(--theme-color); color:#000;">WRITE POST</button>
+            </div>
+            
+            <button class="btn-ui" id="btn-guest-write" onclick="goGuestWrite()" style="display:none; margin-bottom:10px;">GUEST WRITE</button>
+            <div id="auth-status" class="btn-ui" onclick="reqAuth(null)" style="cursor:pointer; text-align:center;">LOGIN</div>
+        </div>
+    </aside>
+
+    <main class="content-area">
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">≡</button>
+
+        <div id="page-home" class="page active">
+            <div class="home-container">
+                <img id="home-banner-img" class="home-hero-img">
+                <div class="home-banner">
+                    <div id="home-maintitle"></div>
+                    <div style="border-bottom: 1px solid rgba(91,115,214,0.3); padding-bottom: 15px; margin-bottom: 25px;">
+                        <div class="home-tech-subtitle">SYSTEM ONLINE</div>
+                    </div>
+                    <div id="home-desc-display"></div>
+                </div>
+                <div class="home-shortcuts-wrap" id="home-shortcuts-wrap">
+                    <div class="home-shortcuts-title">QUICK ACCESS</div>
+                    <div class="home-shortcuts" id="home-shortcuts"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-board" class="page">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+                <h2 id="board-title" class="view-title" style="margin:0; border:none; padding:0;"></h2>
+                <div class="view-toggles">
+                    <button id="view-toggle-list" class="view-btn active" onclick="setViewMode('list', true)">List</button>
+                    <button id="view-toggle-gallery" class="view-btn" onclick="setViewMode('gallery', true)">Gallery</button>
+                </div>
+            </div>
+            <div id="post-list-container" class="view-list"></div>
+        </div>
+
+        <div id="page-write" class="page">
+            <h2 class="view-title">EDIT RECORD</h2>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <select id="w-category" class="input-control" style="flex:1; margin:0;"></select>
+                <input type="password" id="w-post-pw" class="input-control" style="flex:1; margin:0;" placeholder="글 비밀번호 (게스트용/선택)">
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="text" id="w-title" class="input-control" style="flex:3; margin:0;" placeholder="제목">
+                <input type="text" id="w-author" class="input-control" style="flex:1; margin:0;" placeholder="작성자 닉네임 (선택)">
+            </div>
+            <input type="text" id="w-img-url" class="input-control" placeholder="썸네일/포스터 이미지 URL (https://...) 입력">
+            
+            <div style="margin-bottom:20px;">
+                <div class="editor-toolbar">
+                    <button onclick="formatDoc('bold')" style="font-weight:bold;">B</button>
+                    <button onclick="formatDoc('italic')" style="font-style:italic;">I</button>
+                    <span class="divider">|</span>
+                    <button onclick="formatDoc('justifyLeft')">좌</button>
+                    <button onclick="formatDoc('justifyCenter')">중</button>
+                    <button onclick="formatDoc('justifyRight')">우</button>
+                    <button onclick="formatDoc('justifyFull')">양끝</button>
+                    <span class="divider">|</span>
+                    <select class="editor-select" onchange="formatDoc('fontSize', this.value); this.selectedIndex=0;">
+                        <option value="">글자 크기</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+                    </select>
+                    <span class="divider">|</span>
+                    <div class="color-picker-wrap">글자 <input type="color" onchange="formatDoc('foreColor', this.value)"></div>
+                    <div class="color-picker-wrap">배경 <input type="color" onchange="formatDoc('hiliteColor', this.value)"></div>
+                    <span class="divider">|</span>
+                    <button onclick="formatDoc('insertImage', prompt('이미지 URL'))">IMG</button>
+                    <button onclick="formatDoc('createLink', prompt('URL'))">LINK</button>
+                    <button onclick="openModal('linkModal')">Internal</button>
+                    <button onclick="openTableModal()">Table</button>
+                    <button onclick="insertToggle()">Fold</button>
+                    <button onclick="insertQuote()">Quote</button>
+                    <button onclick="insertYouTube()">YouTube</button>
+                    <span class="divider">|</span>
+                    <button onclick="openModal('notionModal')">Template</button>
+                    <button onclick="toggleHTMLMode()" style="margin-left:auto;">HTML</button>
+                </div>
+                <div id="w-content" contenteditable="true"></div>
+                <textarea id="w-content-html" style="display:none; width:100%; min-height:400px; background:#000; color:#0f0; font-family:monospace; padding:20px; border:1px solid var(--theme-color);"></textarea>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-text" onclick="goPage('board')">취소</button>
+                <button class="btn btn-solid" onclick="savePost()">저장</button>
+            </div>
+        </div>
+
+        <div id="page-view" class="page">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:var(--border-line); padding-bottom:15px; margin-bottom:25px;">
+                <div>
+                    <h2 id="v-title" style="font-size:1.8rem; margin-bottom:10px; color:var(--theme-color);"></h2>
+                    <div id="v-info" style="font-size:0.9rem; color:var(--moon-dim);" class="eng-font"></div>
+                </div>
+                <div id="v-admin" style="display:none; gap:10px;">
+                    <button class="btn-text" onclick="toggleNotice()" id="v-btn-notice">공지 지정</button>
+                    <button class="btn-text" onclick="toggleShortcut()" id="v-btn-shortcut">홈 숏컷 지정</button>
+                    <button class="btn-text" onclick="goWrite(currentPostId)">수정</button>
+                    <button class="btn-text" style="color:#ff4a4a;" onclick="deletePost()">삭제</button>
+                </div>
+            </div>
+            <div id="v-content" style="min-height:200px; line-height:1.8; font-size:1.05rem;"></div>
+            <div style="margin-top:40px; border-top:var(--border-line); padding-top:20px; display:flex; justify-content:flex-end;">
+                <button class="btn" onclick="goPage('board')">목록으로</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-bg" id="authModal">
+    <div class="modal">
+        <h3 style="margin-bottom:20px; color:var(--theme-color);">인증</h3>
+        <input type="password" id="auth-pw" class="input-control" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter') checkAuth()">
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn btn-text" onclick="closeModal('authModal')">취소</button>
+            <button class="btn btn-solid" onclick="checkAuth()">확인</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-bg" id="catModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">카테고리 관리</h3>
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <input type="text" id="s-new-cat" class="input-control" style="flex:2; margin:0;" placeholder="새 카테고리 이름">
+        <select id="s-parent-cat" class="input-control" style="flex:1; margin:0;"></select>
+        <button class="btn btn-solid" onclick="addCategory()">추가</button>
+    </div>
+    <div id="cat-mgmt-list" style="background:rgba(0,0,0,0.2); padding:15px; border-radius:4px; max-height:400px; overflow-y:auto;"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+        <button class="btn btn-text" onclick="closeModal('catModal')">닫기</button>
+    </div>
+</div></div>
+
+<div class="modal-bg" id="settingModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">시스템 설정</h3>
+    <label class="modal-label">마스터 비밀번호 변경</label><input type="text" id="s-new-pw" class="input-control" placeholder="비워두면 유지">
+    <label class="modal-label">홈 화면 배너 이미지 URL</label><input type="text" id="s-home-banner-img" class="input-control">
+    <label class="modal-label">웹 폰트 CSS URL</label><input type="text" id="s-font-url" class="input-control" placeholder="https://...">
+    <label class="modal-label">사이트 이름 (로고)</label><textarea id="s-site-name" class="input-control" rows="2"></textarea>
+    <label class="modal-label">홈 메인 타이틀</label><input type="text" id="s-home-title" class="input-control">
+    <label class="modal-label">홈 서브 텍스트</label><textarea id="s-home-desc" class="input-control" rows="3"></textarea>
+    <label class="modal-label">인트로 메인 문구</label><textarea id="s-intro-main" class="input-control" rows="2"></textarea>
+    <label class="modal-label">BGM YouTube ID</label><input type="text" id="s-bgm-id" class="input-control" placeholder="예: jNQXAC9IVRw">
+    <label class="modal-label">방명록 연결 카테고리</label><select id="s-guest-cat" class="input-control"></select>
+    
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn btn-text" onclick="closeModal('settingModal')">취소</button>
+        <button class="btn btn-solid" onclick="saveSettings()">저장</button>
+    </div>
+</div></div>
+
+<div class="modal-bg" id="tableModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">테이블 삽입/편집</h3>
+    <div id="t-rows-wrap" style="margin-bottom:15px; display:flex; justify-content:space-between;"><label>행(Row)</label><input type="number" id="t-rows" class="input-control" style="width:100px; margin:0;" value="3"></div>
+    <div id="t-cols-wrap" style="margin-bottom:15px; display:flex; justify-content:space-between;"><label>열(Column)</label><input type="number" id="t-cols" class="input-control" style="width:100px; margin:0;" value="3"></div>
+    <div style="margin-bottom:15px; display:flex; justify-content:space-between;"><label>너비(%)</label><input type="number" id="t-width" class="input-control" style="width:100px; margin:0;" value="100"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn btn-text" onclick="closeModal('tableModal')">취소</button>
+        <button class="btn btn-solid" onclick="applyTable()">적용</button>
+    </div>
+</div></div>
+
+<div class="modal-bg" id="linkModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">내부 링크 삽입</h3>
+    <div id="link-post-list" style="max-height:300px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:10px; border-radius:4px;"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:20px;"><button class="btn" onclick="closeModal('linkModal')">닫기</button></div>
+</div></div>
+
+<div class="modal-bg" id="notionModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">템플릿 삽입</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button class="btn" onclick="insertNotion('page')">Page Header</button>
+        <button class="btn" onclick="insertNotion('h2')">Heading 2</button>
+        <button class="btn" onclick="insertNotion('todo')">To-Do List</button>
+        <button class="btn" onclick="insertNotion('callout')">Callout Box</button>
+        <button class="btn" onclick="insertNotion('divider')">Divider Line</button>
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin-top:20px;"><button class="btn btn-text" onclick="closeModal('notionModal')">닫기</button></div>
+</div></div>
+
+
+<script>
+    // 시스템 시계 UI
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('clock').innerText = 
+            `${String(now.getHours()).padStart(2, '0')} : ${String(now.getMinutes()).padStart(2, '0')} : ${String(now.getSeconds()).padStart(2, '0')}`;
+    }, 1000);
+
+    /* ====================================================================
+       중요: 아래 줄부터 원래 가지고 계시던 index (1).html 파일의 
+       <script> ... </script> 태그 안쪽에 있던 모든 내용을 복사해서 붙여넣으세요!
+       ==================================================================== */
+       
+    // 
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연구소 메인프레임</title>
+    <style>
+        /* 테마 컬러 #5AE7EF 유지 */
+        :root {
+            --theme-color: #5AE7EF;
+            --theme-dim: rgba(90, 231, 239, 0.3);
+            --bg-color: #030508;
+            --panel-bg: rgba(5, 10, 15, 0.85);
+            --text-color: #c0cdd8;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Artemis', 'Pretendard', sans-serif;
+            font-family: 'Pretendard', 'Courier New', monospace;
             background-color: var(--bg-color);
-            background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070');
             background-size: cover; background-position: center;
-            color: var(--text-main); height: 100vh;
+            color: var(--text-color); height: 100vh;
             display: flex; justify-content: center; align-items: center; overflow: hidden;
-            backdrop-filter: brightness(0.4);
         }
 
-        .mainframe {
-            width: 85vw; max-width: 1100px; height: 80vh;
+        /* 메인 패널 */
+        .mainframe-panel {
+            display: flex; width: 85vw; max-width: 1200px; height: 80vh;
             background: var(--panel-bg); border: 1px solid var(--theme-color);
-            border-radius: 12px; box-shadow: 0 0 30px var(--theme-glow), inset 0 0 20px var(--theme-glow);
-            backdrop-filter: blur(15px); display: flex; flex-direction: column; position: relative;
+            border-radius: 12px; box-shadow: 0 0 20px var(--theme-dim), inset 0 0 20px var(--theme-dim);
+            backdrop-filter: blur(10px); position: relative;
         }
 
-        /* 상단 헤더 */
-        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid rgba(91, 115, 214, 0.2); }
-        .subject-name { font-size: 0.95rem; color: var(--text-muted); letter-spacing: 1px; font-weight: bold; }
+        /* 좌측 사이드바 */
+        .sidebar {
+            width: 260px; border-right: 1px solid var(--theme-dim);
+            padding: 2rem 1.5rem; display: flex; flex-direction: column;
+        }
+
+        .header-info { font-size: 1rem; color: var(--theme-color); margin-bottom: 2rem; font-weight: bold; letter-spacing: 1px; }
+
+        /* 네비게이션 메뉴 */
+        .nav-menu { flex: 1; overflow-y: auto; margin-bottom: 1rem; }
+        .menu-item { margin-bottom: 0.5rem; }
+        .parent-cat {
+            display: block; color: var(--text-color); font-size: 1rem; padding: 0.5rem 0;
+            cursor: pointer; transition: color 0.2s; letter-spacing: 1px;
+        }
+        .parent-cat:hover { color: var(--theme-color); }
+        .sub-cat-list { display: none; padding-left: 1rem; margin-bottom: 1rem; border-left: 1px solid var(--theme-dim); margin-left: 0.5rem; }
+        .menu-item.open .sub-cat-list { display: block; }
+        .sub-cat { display: block; color: #8899a6; font-size: 0.85rem; padding: 0.3rem 0; cursor: pointer; transition: color 0.2s; }
+        .sub-cat:hover { color: var(--theme-color); }
+
+        /* 하단 위젯 (이미지 & 시스템 & 로그인) */
+        .bottom-widgets { margin-top: auto; text-align: center; }
         
-        .bgm-controls { display: flex; align-items: center; gap: 10px; color: var(--theme-color); font-size: 0.8rem; }
-        .bgm-slider { width: 80px; height: 3px; background: var(--text-muted); appearance: none; outline: none; }
-        .bgm-slider::-webkit-slider-thumb { appearance: none; width: 8px; height: 8px; background: var(--theme-color); border-radius: 50%; cursor: pointer; }
-        .bgm-btn { background: none; border: none; color: var(--theme-color); cursor: pointer; font-size: 1rem; }
+        /* (4) 캘린더 대신 들어갈 이미지 영역 */
+        .sidebar-image-container {
+            width: 100%; height: 120px; margin-bottom: 1rem;
+            border: 1px solid var(--theme-dim); border-radius: 4px; overflow: hidden;
+            background-color: #000; display: flex; justify-content: center; align-items: center;
+        }
+        .sidebar-image-container img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* 하단 레이아웃 */
-        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        .sys-time-box {
+            border: 1px solid var(--theme-dim); padding: 0.5rem; border-radius: 4px;
+            font-size: 0.8rem; color: var(--theme-color); letter-spacing: 2px; margin-bottom: 1rem;
+        }
 
-        /* (1), (3), (5) 사이드바 카테고리 메뉴 */
-        .sidebar { width: 240px; border-right: 1px solid rgba(91, 115, 214, 0.2); padding: 2rem 1.5rem; display: flex; flex-direction: column; justify-content: space-between; }
-        .nav-menu { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
-        .menu-group { margin-bottom: 0.5rem; }
-        .parent-cat { color: var(--text-muted); font-size: 0.95rem; cursor: pointer; transition: 0.2s; letter-spacing: 1px; display: block; padding: 0.2rem 0; }
-        .parent-cat:hover, .parent-cat.active { color: var(--theme-color); font-weight: bold; text-shadow: 0 0 8px var(--theme-glow); }
-        .sub-cat-list { display: none; padding-left: 1rem; border-left: 1px solid var(--theme-glow); margin-left: 0.5rem; margin-top: 0.5rem; }
-        .menu-group.open .sub-cat-list { display: block; }
-        .sub-cat { display: block; color: #8899a6; font-size: 0.85rem; padding: 0.3rem 0; cursor: pointer; }
-        .sub-cat:hover, .sub-cat.active { color: var(--theme-color); }
+        /* (2) 명시적인 로그인 버튼 */
+        .auth-btn {
+            width: 100%; background: transparent; color: var(--theme-color);
+            border: 1px dashed var(--theme-color); padding: 0.5rem; border-radius: 4px;
+            cursor: pointer; font-size: 0.85rem; letter-spacing: 1px; transition: 0.3s;
+        }
+        .auth-btn:hover { background: var(--theme-color); color: #000; }
 
-        .bottom-info { text-align: center; }
-        .sidebar-img { width: 100%; height: 100px; background: #000; border: 1px solid var(--theme-glow); margin-bottom: 1rem; object-fit: cover; border-radius: 4px; }
-        .sys-time { border: 1px dashed var(--theme-glow); padding: 0.5rem; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; letter-spacing: 2px; }
-        .login-btn { width: 100%; padding: 0.5rem; background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color); border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.8rem; transition: 0.3s; }
-        .login-btn:hover { background: var(--theme-color); color: #000; }
+        /* 우측 메인 콘텐츠 영역 */
+        .content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem; }
 
-        /* 콘텐츠 영역 */
-        .content-area { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; }
-        .view-title { font-size: 1.5rem; color: var(--theme-color); margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+        /* 인트로 화면 & 타이핑 효과 */
+        .intro-screen { text-align: center; width: 100%; }
+        .intro-text-area { font-size: 1.2rem; color: var(--theme-color); margin-bottom: 2rem; min-height: 80px; text-shadow: 0 0 5px var(--theme-dim); line-height: 1.6; }
+        .cursor { display: inline-block; width: 10px; height: 1.2em; background-color: var(--theme-color); vertical-align: middle; animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        .write-section { display: none; background: rgba(0,0,0,0.3); padding: 1.5rem; border: 1px solid var(--theme-glow); border-radius: 8px; margin-bottom: 2rem; }
-        .is-admin .write-section { display: block; }
-        .write-input, .write-select { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--theme-glow); color: #fff; font-family: inherit; font-size: 0.9rem; padding: 0.5rem; margin-bottom: 1rem; outline: none; }
-        .write-textarea { width: 100%; height: 80px; background: rgba(0,0,0,0.5); border: 1px solid var(--theme-glow); color: #fff; font-family: inherit; font-size: 0.9rem; padding: 0.5rem; margin-bottom: 1rem; outline: none; resize: none; }
-        .submit-btn { padding: 0.5rem 1.5rem; background: var(--theme-color); color: #000; border: none; cursor: pointer; font-family: inherit; border-radius: 3px; font-weight: bold; }
+        .btn-group { display: none; gap: 1rem; justify-content: center; } /* 초기엔 숨김 */
+        .btn {
+            background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color);
+            padding: 0.5rem 2rem; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: all 0.3s; letter-spacing: 1px;
+        }
+        .btn:hover { background: var(--theme-color); color: var(--bg-color); box-shadow: 0 0 15px var(--theme-dim); }
 
-        .post-list { display: flex; flex-direction: column; }
-        .post-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 1.5rem 0; position: relative; }
-        .post-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
-        .post-title { font-size: 1.2rem; color: #fff; margin-bottom: 0.5rem; font-weight: normal; }
-        .post-excerpt { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap; }
+        /* 콘텐츠 뷰어 */
+        .data-viewer { display: none; width: 100%; height: 100%; flex-direction: column; }
+        .content-header { border-bottom: 1px solid var(--theme-dim); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .content-title-area h2 { font-size: 1.5rem; font-weight: normal; color: var(--theme-color); }
+        .content-body { flex: 1; overflow-y: auto; color: #a0b0c0; line-height: 1.8; }
+
+        /* (1) 관리자(로그인) 전용 UI */
+        .admin-controls { display: none; gap: 0.5rem; }
+        .admin-btn { font-size: 0.8rem; padding: 0.3rem 0.8rem; border: 1px solid var(--theme-color); background: transparent; color: var(--theme-color); cursor: pointer; transition: 0.2s; }
+        .admin-btn:hover { background: var(--theme-color); color: #000; }
         
-        .admin-controls { position: absolute; right: 0; top: 1.5rem; display: none; }
-        .is-admin .admin-controls { display: block; }
-        .del-btn { background: transparent; border: 1px solid #ff4a4a; color: #ff4a4a; padding: 0.2rem 0.5rem; font-size: 0.7rem; cursor: pointer; border-radius: 3px; }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--theme-glow); border-radius: 3px; }
+        /* body에 is-admin 클래스가 붙으면 편집 버튼들이 보임 */
+        .is-admin .admin-controls { display: flex; } 
     </style>
 </head>
 <body>
 
     <script>
         const SITE_CONFIG = {
-            // (2) 사이트 이름 및 메인 타이틀 설정
-            siteTitle: "PROJECT: ERG ARCHIVE",
-            subjectName: "실험체: 혜레", 
+            // (5) 홈페이지 및 카테고리 등 텍스트 설정
+            siteTitle: "PROJECT: ERG MAIN FRAME", // 브라우저 탭 이름
+            subjectName: "실험체: 혜레",           // 좌측 상단 이름
             
-            // (4) 사이트 BGM 설정 (mp3 파일 주소 입력)
-            bgmUrl: "YOUR_BGM_FILE.mp3", 
+            // (4) 사이드바에 들어갈 이미지 주소 (원하는 이미지 링크로 변경하세요)
+            sidebarImageUrl: "https://via.placeholder.com/300x150/050a0f/5ae7ef?text=SUBJECT_IMG", 
+            
+            // (6) 인트로 타이핑 문구 설정 (배열에 적힌 순서대로 한 줄씩 타이핑됩니다)
+            introTypingTexts: [
+                "ESTABLISHING SECURE CONNECTION...",
+                "LOADING CLASSIFIED DATA...",
+                "연구 일지를 열람하시겠습니까?"
+            ],
+            introYes: "YES",
+            introNo: "NO",
 
-            // (1), (3), (5) 카테고리 및 하위 카테고리 설정
-            // sub 배열에 하위 카테고리를 적으면 자동으로 메뉴가 생성됩니다.
+            // 카테고리 및 서브 카테고리 설정
             categories: [
                 { name: "HOME", sub: [] },
-                { name: "ARCHIVE", sub: ["엘백도", "태칸", "메이레스", "관찰 기록"] },
+                { name: "ARCHIVE", sub: ["관찰 기록", "폐기된 데이터"] },
                 { name: "TRPG LOG", sub: ["Session 1", "Session 2"] },
                 { name: "GALLERY", sub: [] },
                 { name: "GUESTBOOK", sub: [] }
-            ]
+            ],
+            
+            // (1) 마스터 비밀번호 (글쓰기/수정/삭제 권한용)
+            masterPassword: "123" 
         };
     </script>
 
-    <audio id="bgm" loop></audio>
+    <div class="mainframe-panel">
+        <aside class="sidebar">
+            <div class="header-info" id="subject-display">SUBJECT_NAME</div>
+            
+            <nav class="nav-menu" id="menu-container">
+                </nav>
 
-    <div class="mainframe">
-        <header class="top-bar">
-            <div class="subject-name" id="display-subject">SUBJECT_NAME</div>
-            <div class="bgm-controls">
-                <span>BGM</span>
-                <input type="range" class="bgm-slider" id="bgm-vol" min="0" max="1" step="0.01" value="0.5">
-                <button class="bgm-btn" id="bgm-play">▶</button>
+            <div class="bottom-widgets">
+                <div class="sidebar-image-container">
+                    <img id="sidebar-img" src="" alt="Sidebar Image">
+                </div>
+                
+                <div class="sys-time-box">
+                    [ SYSTEM TIME ]<br>
+                    <span id="clock-display">00 : 00 : 00</span>
+                </div>
+
+                <button id="auth-btn" class="auth-btn" onclick="toggleLogin()">[ ADMIN LOGIN ]</button>
             </div>
-        </header>
+        </aside>
 
-        <div class="main-layout">
-            <aside class="sidebar">
-                <nav class="nav-menu" id="nav-container">
-                    </nav>
-
-                <div class="bottom-info">
-                    <img src="https://via.placeholder.com/200x100/0a0e19/5b73d6?text=IMAGE" class="sidebar-img" alt="Sidebar Img">
-                    <div class="sys-time">[ SYSTEM TIME ]<br><span id="clock">00 : 00 : 00</span></div>
-                    <button class="login-btn" id="auth-btn" onclick="handleLogin()">LOGIN</button>
+        <main class="content-area">
+            <div class="intro-screen" id="intro-box">
+                <div class="intro-text-area">
+                    <span id="typing-output"></span><span class="cursor"></span>
                 </div>
-            </aside>
+                <div class="btn-group" id="intro-btns">
+                    <button class="btn" id="btn-yes">YES</button>
+                    <button class="btn" id="btn-no">NO</button>
+                </div>
+            </div>
 
-            <main class="content-area">
-                <h2 class="view-title" id="current-view-title">ALL POSTS</h2>
-
-                <div class="write-section">
-                    <div style="display: flex; gap: 10px;">
-                        <select id="post-category" class="write-select" style="flex: 1;">
-                            </select>
-                        <input type="date" id="post-date" class="write-input" style="flex: 1;">
+            <div class="data-viewer" id="data-box">
+                <div class="content-header">
+                    <div class="content-title-area">
+                        <h2 id="content-title">CATEGORY_NAME</h2>
                     </div>
-                    <input type="text" id="post-title" class="write-input" placeholder="제목을 입력하세요">
-                    <textarea id="post-content" class="write-textarea" placeholder="내용을 입력하세요..."></textarea>
-                    <button class="submit-btn" onclick="savePost()">POST RECORD</button>
+                    <div class="admin-controls">
+                        <button class="admin-btn" onclick="alert('새 글 쓰기 에디터를 엽니다.')">WRITE</button>
+                        <button class="admin-btn" onclick="alert('현재 글을 수정합니다.')">EDIT</button>
+                        <button class="admin-btn" onclick="alert('현재 글을 삭제합니다.')">DELETE</button>
+                    </div>
                 </div>
-
-                <div class="post-list" id="post-container">
-                    <div style="color:var(--text-muted); text-align:center; padding: 2rem;">데이터를 동기화 중입니다...</div>
+                <div class="content-body" id="content-body">
+                    데이터를 불러오는 중입니다...
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
     <script>
-        // --- 1. 환경 설정 적용 ---
-        document.title = SITE_CONFIG.siteTitle;
-        document.getElementById('display-subject').innerText = SITE_CONFIG.subjectName;
-        document.getElementById('bgm').src = SITE_CONFIG.bgmUrl;
+        let isLoggedIn = false;
 
-        let currentFilter = "ALL"; // 현재 선택된 카테고리 필터
-        let allPostsData = [];     // 파이어베이스에서 불러온 모든 글 캐싱
-
-        // --- 2. 카테고리 메뉴 생성 ---
-        function renderMenu() {
-            const nav = document.getElementById('nav-container');
-            const catSelect = document.getElementById('post-category');
+        function init() {
+            // 유저 설정값 적용
+            document.title = SITE_CONFIG.siteTitle;
+            document.getElementById('subject-display').innerText = SITE_CONFIG.subjectName;
+            document.getElementById('sidebar-img').src = SITE_CONFIG.sidebarImageUrl;
+            document.getElementById('btn-yes').innerText = SITE_CONFIG.introYes;
+            document.getElementById('btn-no').innerText = SITE_CONFIG.introNo;
             
-            nav.innerHTML = `<div class="menu-group"><span class="parent-cat active" onclick="setFilter('ALL')">> VIEW ALL</span></div>`;
-            catSelect.innerHTML = `<option value="">-- 카테고리 선택 --</option>`;
+            renderMenu();
+            startClock();
+            startTypingEffect();
+        }
 
-            SITE_CONFIG.categories.forEach(cat => {
-                // 네비게이션 생성
-                const group = document.createElement('div');
-                group.className = 'menu-group';
-                
-                const parent = document.createElement('span');
-                parent.className = 'parent-cat';
-                parent.innerText = `> ${cat.name}`;
-                parent.onclick = () => {
-                    group.classList.toggle('open');
-                    setFilter(cat.name);
-                };
-                group.appendChild(parent);
-
-                // 글쓰기 드롭다운 옵션 추가 (부모)
-                if (cat.name !== "HOME") {
-                    catSelect.innerHTML += `<option value="${cat.name}">[${cat.name}]</option>`;
+        // 인트로 타이핑 효과 실행
+        let typeLineIdx = 0;
+        let typeCharIdx = 0;
+        function startTypingEffect() {
+            const output = document.getElementById('typing-output');
+            
+            if (typeLineIdx < SITE_CONFIG.introTypingTexts.length) {
+                let currentLine = SITE_CONFIG.introTypingTexts[typeLineIdx];
+                if (typeCharIdx < currentLine.length) {
+                    output.innerHTML += currentLine.charAt(typeCharIdx);
+                    typeCharIdx++;
+                    setTimeout(startTypingEffect, 40); // 글자 타이핑 속도
+                } else {
+                    output.innerHTML += "<br>";
+                    typeLineIdx++;
+                    typeCharIdx = 0;
+                    setTimeout(startTypingEffect, 500); // 줄바꿈 대기 시간
                 }
+            } else {
+                // 타이핑이 모두 끝나면 버튼 표시
+                document.getElementById('intro-btns').style.display = 'flex';
+            }
+        }
 
-                // 서브 카테고리 생성
+        // 메뉴 렌더링
+        function renderMenu() {
+            const container = document.getElementById('menu-container');
+            SITE_CONFIG.categories.forEach((cat) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'menu-item';
+                
+                const parentTitle = document.createElement('span');
+                parentTitle.className = 'parent-cat';
+                parentTitle.innerText = `> ${cat.name}`;
+                parentTitle.onclick = () => {
+                    itemDiv.classList.toggle('open');
+                    if(cat.sub.length === 0) loadContent(cat.name);
+                };
+                itemDiv.appendChild(parentTitle);
+
                 if (cat.sub.length > 0) {
                     const subList = document.createElement('div');
                     subList.className = 'sub-cat-list';
                     cat.sub.forEach(sub => {
                         const subItem = document.createElement('span');
                         subItem.className = 'sub-cat';
-                        subItem.innerText = `- ${sub}`;
-                        subItem.onclick = (e) => {
-                            e.stopPropagation(); // 부모 클릭 이벤트 방지
-                            setFilter(sub);
-                        };
+                        subItem.innerText = "- " + sub;
+                        subItem.onclick = () => loadContent(`${cat.name} : ${sub}`);
                         subList.appendChild(subItem);
-                        
-                        // 글쓰기 드롭다운 옵션 추가 (자식)
-                        catSelect.innerHTML += `<option value="${sub}">ㄴ ${sub}</option>`;
                     });
-                    group.appendChild(subList);
+                    itemDiv.appendChild(subList);
                 }
-                nav.appendChild(group);
+                container.appendChild(itemDiv);
             });
         }
 
-        // --- 3. 카테고리 필터링 렌더링 ---
-        function setFilter(categoryName) {
-            currentFilter = categoryName;
-            document.getElementById('current-view-title').innerText = categoryName === "ALL" ? "ALL POSTS" : `CATEGORY : ${categoryName}`;
-            renderPosts(); // 화면 다시 그리기
-        }
-
-        function renderPosts() {
-            const container = document.getElementById('post-container');
-            container.innerHTML = '';
-
-            const filteredPosts = currentFilter === "ALL" 
-                ? allPostsData 
-                : allPostsData.filter(post => post.category === currentFilter || post.parentCategory === currentFilter);
-
-            if (filteredPosts.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 2rem; color:#555;">[ ${currentFilter} ] 에 해당하는 기록이 없습니다.</div>`;
-                return;
+        // 로그인 / 로그아웃 토글
+        function toggleLogin() {
+            const authBtn = document.getElementById('auth-btn');
+            if (isLoggedIn) {
+                // 로그아웃 처리
+                isLoggedIn = false;
+                document.body.classList.remove('is-admin');
+                authBtn.innerText = "[ ADMIN LOGIN ]";
+                alert("로그아웃 되었습니다. 편집 권한이 회수됩니다.");
+            } else {
+                // 로그인 처리
+                const pwd = prompt("SYSTEM ADMIN PASSWORD를 입력하세요:");
+                if (pwd === SITE_CONFIG.masterPassword) {
+                    isLoggedIn = true;
+                    document.body.classList.add('is-admin'); // 편집 버튼 활성화
+                    authBtn.innerText = "[ LOGOUT ]";
+                    alert("인증 완료. 글쓰기, 편집, 삭제 기능이 활성화되었습니다.");
+                } else if (pwd !== null) {
+                    alert("비밀번호가 일치하지 않습니다.");
+                }
             }
-
-            filteredPosts.forEach(data => {
-                container.innerHTML += `
-                    <div class="post-item">
-                        <div class="post-meta">
-                            <span style="color: var(--theme-color);">${data.category}</span>
-                            <span>${data.date}</span>
-                        </div>
-                        <h3 class="post-title">${data.title}</h3>
-                        <p class="post-excerpt">${data.content}</p>
-                        <div class="admin-controls">
-                            <button class="del-btn" onclick="deletePost('${data.id}')">삭제</button>
-                        </div>
-                    </div>
-                `;
-            });
         }
 
-        // --- 파이어베이스 연동 로직 (이전 코드와 동일, 반드시 정보 입력 필요!) ---
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+        // 인트로 통과 이벤트
+        document.getElementById('btn-yes').onclick = () => {
+            document.getElementById('intro-box').style.display = 'none';
+            document.getElementById('data-box').style.display = 'flex';
+            loadContent("HOME");
         };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
 
-        // 실시간 데이터 불러오기
-        db.collection("archive").orderBy("date", "desc").onSnapshot((snapshot) => {
-            allPostsData = [];
-            snapshot.forEach((doc) => {
-                allPostsData.push({ id: doc.id, ...doc.data() });
-            });
-            renderPosts();
-        }, (error) => {
-            console.error("Firebase 오류:", error);
-            document.getElementById('post-container').innerHTML = `<div style="color:#ff4a4a; padding: 2rem;">Firebase 설정을 확인하세요.</div>`;
-        });
-
-        // 새 글 저장
-        function savePost() {
-            const category = document.getElementById('post-category').value;
-            const date = document.getElementById('post-date').value;
-            const title = document.getElementById('post-title').value;
-            const content = document.getElementById('post-content').value;
-
-            if(!category || !title || !content) return alert("카테고리, 제목, 내용을 모두 입력하세요.");
-
-            db.collection("archive").add({
-                category: category,
-                date: date || new Date().toISOString().split('T')[0],
-                title: title,
-                content: content,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                document.getElementById('post-title').value = '';
-                document.getElementById('post-content').value = '';
-                alert("기록이 성공적으로 업로드되었습니다.");
-            }).catch(error => alert("작성 실패: " + error.message));
-        }
-
-        function deletePost(docId) {
-            if(confirm("이 기록을 데이터베이스에서 영구 삭제하시겠습니까?")) {
-                db.collection("archive").doc(docId).delete();
-            }
-        }
-
-        // --- 로그인 & 부가 기능 ---
-        const authBtn = document.getElementById('auth-btn');
-        auth.onAuthStateChanged((user) => {
-            if (user) { document.body.classList.add('is-admin'); authBtn.innerText = "LOGOUT"; } 
-            else { document.body.classList.remove('is-admin'); authBtn.innerText = "LOGIN"; }
-        });
-
-        function handleLogin() {
-            if (auth.currentUser) auth.signOut();
-            else {
-                const email = prompt("관리자 이메일을 입력하세요:");
-                const pwd = prompt("비밀번호를 입력하세요:");
-                if(email && pwd) auth.signInWithEmailAndPassword(email, pwd).catch(e => alert("로그인 실패: " + e.message));
-            }
-        }
-
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerText = `${String(now.getHours()).padStart(2, '0')} : ${String(now.getMinutes()).padStart(2, '0')} : ${String(now.getSeconds()).padStart(2, '0')}`;
-        }, 1000);
-
-        const bgm = document.getElementById('bgm');
-        const playBtn = document.getElementById('bgm-play');
-        let isPlaying = false;
-        playBtn.onclick = () => {
-            if(isPlaying) { bgm.pause(); playBtn.innerText = "▶"; } 
-            else { bgm.play(); playBtn.innerText = "⏸"; }
-            isPlaying = !isPlaying;
+        document.getElementById('btn-no').onclick = () => {
+            document.getElementById('typing-output').innerHTML = "SYSTEM TERMINATED.<br>접근이 거부되었습니다.";
+            document.getElementById('intro-btns').style.display = 'none';
         };
-        document.getElementById('bgm-vol').oninput = (e) => { bgm.volume = e.target.value; };
 
-        // 초기화 실행
-        renderMenu();
+        // 콘텐츠 표시
+        function loadContent(title) {
+            document.getElementById('intro-box').style.display = 'none';
+            document.getElementById('data-box').style.display = 'flex';
+            document.getElementById('content-title').innerText = title;
+            document.getElementById('content-body').innerHTML = 
+                `[ ${title} ] 데이터 열람 중...<br><br>여기에 등록된 내용이 표시됩니다. 관리자 로그인 시 우측 상단의 WRITE / EDIT 버튼을 눌러 내용을 작성할 수 있습니다.`;
+        }
+
+        // 시계
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                document.getElementById('clock-display').innerText = `${h} : ${m} : ${s}`;
+            }, 1000);
+        }
+
+        window.onload = init;
     </script>
+</body>
+</html>
+    
+    
+</script>
 </body>
 </html>
