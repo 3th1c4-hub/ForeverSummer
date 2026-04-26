@@ -3,329 +3,325 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>연구소 메인프레임</title>
+    <title>PROJECT: ERG ARCHIVE</title>
+    
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
     <style>
+        /* (1) 영어는 Artemis, 한글은 Pretendard 적용 */
+        @font-face {
+            font-family: 'Artemis';
+            src: url('./Artemis.ttf') format('truetype'); /* 깃허브에 Artemis.ttf 파일을 함께 올려주세요! */
+            /* 폰트 파일이 없을 경우를 대비한 대체 폰트 */
+            font-weight: normal;
+            font-style: normal;
+        }
+
         :root {
-            --theme-color: #5AE7EF;
-            --theme-dim: rgba(90, 231, 239, 0.3);
-            --bg-color: #030508;
-            --panel-bg: rgba(5, 10, 15, 0.85);
-            --text-color: #c0cdd8;
+            --theme-color: #5b73d6; /* GIF에 가까운 푸른빛 네온 */
+            --theme-glow: rgba(91, 115, 214, 0.4);
+            --bg-color: #050810;
+            --panel-bg: rgba(10, 14, 25, 0.75);
+            --text-main: #d0d8e8;
+            --text-muted: #6b7a99;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Pretendard', 'Courier New', monospace;
-            background-color: var(--bg-color); color: var(--text-color);
-            height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden;
+            /* 폰트 적용 순서: 영어/숫자는 Artemis 먼저, 한글은 Pretendard */
+            font-family: 'Artemis', 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070'); /* 임시 배경 이미지 */
+            background-size: cover; background-position: center;
+            color: var(--text-main); height: 100vh;
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
+            backdrop-filter: brightness(0.4);
         }
 
-        .mainframe-panel {
-            display: flex; width: 85vw; max-width: 1200px; height: 80vh;
+        /* 메인 패널 (글래스모피즘 & 네온 테두리) */
+        .mainframe {
+            width: 85vw; max-width: 1100px; height: 80vh;
             background: var(--panel-bg); border: 1px solid var(--theme-color);
-            border-radius: 12px; box-shadow: 0 0 20px var(--theme-dim), inset 0 0 20px var(--theme-dim);
-            backdrop-filter: blur(10px);
+            border-radius: 12px; box-shadow: 0 0 30px var(--theme-glow), inset 0 0 20px var(--theme-glow);
+            backdrop-filter: blur(15px); display: flex; flex-direction: column; position: relative;
         }
 
-        /* 사이드바 */
-        .sidebar { width: 260px; border-right: 1px solid var(--theme-dim); padding: 2rem 1.5rem; display: flex; flex-direction: column; }
-        .header-info { font-size: 1rem; color: var(--theme-color); margin-bottom: 2rem; font-weight: bold; letter-spacing: 1px; }
-
-        /* 메뉴 */
-        .nav-menu { flex: 1; overflow-y: auto; margin-bottom: 1rem; }
-        .menu-item { margin-bottom: 0.5rem; }
-        .parent-cat { display: block; color: var(--text-color); font-size: 1rem; padding: 0.5rem 0; cursor: pointer; transition: color 0.2s; }
-        .parent-cat:hover { color: var(--theme-color); }
-        .sub-cat-list { display: none; padding-left: 1rem; margin-bottom: 1rem; border-left: 1px solid var(--theme-dim); margin-left: 0.5rem; }
-        .menu-item.open .sub-cat-list { display: block; }
-        .sub-cat { display: block; color: #8899a6; font-size: 0.85rem; padding: 0.3rem 0; cursor: pointer; }
-        .sub-cat:hover { color: var(--theme-color); }
-
-        /* 하단 위젯 */
-        .bottom-widgets { margin-top: auto; text-align: center; }
-        .sidebar-image-container {
-            width: 100%; height: 120px; margin-bottom: 1rem;
-            border: 1px solid var(--theme-dim); border-radius: 4px; overflow: hidden; background-color: #000;
+        /* 상단 헤더 (이름 & BGM 컨트롤) */
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.5rem; border-bottom: 1px solid rgba(91, 115, 214, 0.2);
         }
-        .sidebar-image-container img { width: 100%; height: 100%; object-fit: cover; }
-        .sys-time-box { border: 1px solid var(--theme-dim); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; color: var(--theme-color); margin-bottom: 1rem; }
-        .auth-btn { width: 100%; background: transparent; color: var(--theme-color); border: 1px dashed var(--theme-color); padding: 0.5rem; border-radius: 4px; cursor: pointer; transition: 0.3s; margin-bottom: 0.5rem; }
-        .auth-btn:hover { background: var(--theme-color); color: #000; }
-
-        /* 관리자 전용 셋팅 버튼 */
-        .settings-btn { display: none; width: 100%; background: var(--theme-dim); color: var(--theme-color); border: 1px solid var(--theme-color); padding: 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-        .settings-btn:hover { background: var(--theme-color); color: #000; }
-        .is-admin .settings-btn { display: block; }
-
-        /* 메인 콘텐츠 영역 */
-        .content-area { flex: 1; display: flex; flex-direction: column; padding: 3rem; position: relative; }
-
-        /* 인트로 */
-        .intro-screen { text-align: center; margin: auto; }
-        .intro-text-area { font-size: 1.2rem; color: var(--theme-color); margin-bottom: 2rem; min-height: 80px; text-shadow: 0 0 5px var(--theme-dim); line-height: 1.6; }
-        .cursor { display: inline-block; width: 10px; height: 1.2em; background-color: var(--theme-color); vertical-align: middle; animation: blink 1s step-end infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        .btn-group { display: none; gap: 1rem; justify-content: center; }
-        .btn { background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color); padding: 0.5rem 2rem; border-radius: 4px; cursor: pointer; transition: 0.3s; }
-        .btn:hover { background: var(--theme-color); color: var(--bg-color); box-shadow: 0 0 15px var(--theme-dim); }
-
-        /* 뷰어 & 에디터 공통 */
-        .content-header { border-bottom: 1px solid var(--theme-dim); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
-        .content-title-area h2 { font-size: 1.5rem; font-weight: normal; color: var(--theme-color); }
+        .subject-name { font-size: 0.95rem; color: var(--text-muted); letter-spacing: 1px; }
         
-        .data-viewer, .data-editor { display: none; width: 100%; height: 100%; flex-direction: column; }
-        .content-body { flex: 1; overflow-y: auto; color: #a0b0c0; line-height: 1.8; white-space: pre-wrap; }
+        /* (5) BGM 컨트롤러 */
+        .bgm-controls { display: flex; align-items: center; gap: 10px; color: var(--theme-color); font-size: 0.8rem; }
+        .bgm-slider { width: 80px; height: 3px; background: var(--text-muted); appearance: none; outline: none; }
+        .bgm-slider::-webkit-slider-thumb { appearance: none; width: 8px; height: 8px; background: var(--theme-color); border-radius: 50%; cursor: pointer; }
+        .bgm-btn { background: none; border: none; color: var(--theme-color); cursor: pointer; font-size: 1rem; }
+        .bgm-btn:hover { color: #fff; text-shadow: 0 0 5px var(--theme-color); }
 
-        /* 관리자 버튼 (뷰어용) */
-        .admin-controls { display: none; gap: 0.5rem; }
-        .admin-btn { font-size: 0.8rem; padding: 0.3rem 0.8rem; border: 1px solid var(--theme-color); background: transparent; color: var(--theme-color); cursor: pointer; }
-        .admin-btn:hover { background: var(--theme-color); color: #000; }
-        .is-admin .admin-controls { display: flex; }
+        /* 하단 메인 레이아웃 (사이드바 + 콘텐츠) */
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
 
-        /* 에디터 텍스트 영역 */
-        textarea {
-            flex: 1; width: 100%; background: rgba(0,0,0,0.3); color: #fff;
-            border: 1px solid var(--theme-dim); padding: 1rem; border-radius: 4px;
-            font-family: inherit; font-size: 1rem; line-height: 1.6; resize: none; outline: none;
+        /* 좌측 사이드바 */
+        .sidebar {
+            width: 240px; border-right: 1px solid rgba(91, 115, 214, 0.2);
+            padding: 2rem 1.5rem; display: flex; flex-direction: column; justify-content: space-between;
         }
-        textarea:focus { border-color: var(--theme-color); box-shadow: 0 0 10px var(--theme-dim); }
+        
+        .nav-menu { flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+        .nav-item { color: var(--text-muted); font-size: 0.95rem; cursor: pointer; transition: 0.2s; letter-spacing: 1px; }
+        .nav-item:hover, .nav-item.active { color: var(--theme-color); font-weight: bold; text-shadow: 0 0 8px var(--theme-glow); }
+
+        /* (7) 캘린더 대신 이미지 & 시스템 정보 */
+        .bottom-info { text-align: center; }
+        .sidebar-img { width: 100%; height: 100px; background: #000; border: 1px solid var(--theme-glow); margin-bottom: 1rem; object-fit: cover; border-radius: 4px; }
+        .sys-time { border: 1px dashed var(--theme-glow); padding: 0.5rem; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; letter-spacing: 2px; }
+        
+        /* (4) 로그인 버튼 */
+        .login-btn { width: 100%; padding: 0.5rem; background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color); border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.8rem; transition: 0.3s; }
+        .login-btn:hover { background: var(--theme-color); color: #000; }
+
+        /* 우측 콘텐츠 영역 */
+        .content-area { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; }
+
+        /* 아카이브 필터 메뉴 */
+        .filter-menu { display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+        .filter-item { color: var(--text-muted); font-size: 0.85rem; cursor: pointer; }
+        .filter-item.active { color: var(--theme-color); }
+
+        /* 아카이브 리스트 (GIF UI 반영) */
+        .post-list { display: flex; flex-direction: column; }
+        .post-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 1.5rem 0; position: relative; }
+        .post-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .post-title { font-size: 1.2rem; color: #fff; margin-bottom: 0.5rem; font-weight: normal; }
+        .post-excerpt { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+        
+        /* 관리자 전용 삭제 버튼 */
+        .admin-controls { position: absolute; right: 0; top: 1.5rem; display: none; }
+        .is-admin .admin-controls { display: block; }
+        .del-btn { background: transparent; border: 1px solid #ff4a4a; color: #ff4a4a; padding: 0.2rem 0.5rem; font-size: 0.7rem; cursor: pointer; border-radius: 3px; }
+
+        /* 새 글 쓰기 UI (관리자 전용) */
+        .write-section { display: none; background: rgba(0,0,0,0.3); padding: 1.5rem; border: 1px solid var(--theme-glow); border-radius: 8px; margin-bottom: 2rem; }
+        .is-admin .write-section { display: block; }
+        .write-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--theme-glow); color: #fff; font-family: inherit; font-size: 1rem; padding: 0.5rem; margin-bottom: 1rem; outline: none; }
+        .write-textarea { width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid var(--theme-glow); color: #fff; font-family: inherit; font-size: 0.9rem; padding: 0.5rem; margin-bottom: 1rem; outline: none; resize: none; }
+        .submit-btn { padding: 0.5rem 1.5rem; background: var(--theme-color); color: #000; border: none; cursor: pointer; font-family: inherit; border-radius: 3px; }
+
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--theme-glow); border-radius: 3px; }
     </style>
 </head>
 <body>
 
-    <script>
-        // 기본 설정값 (로컬 스토리지에 데이터가 없을 때만 사용됨)
-        const SITE_CONFIG = {
-            defaultSubjectName: "실험체: 혜레",
-            defaultImageUrl: "https://via.placeholder.com/300x150/050a0f/5ae7ef?text=SUBJECT_IMG", 
-            introTypingTexts: [
-                "ESTABLISHING SECURE CONNECTION...",
-                "LOADING CLASSIFIED DATA...",
-                "연구 일지를 열람하시겠습니까?"
-            ],
-            categories: [
-                { name: "HOME", sub: [] },
-                { name: "ARCHIVE", sub: ["관찰 기록", "폐기된 데이터"] },
-                { name: "TRPG LOG", sub: ["Session 1", "Session 2"] }
-            ],
-            masterPassword: "123" // 관리자 비밀번호
-        };
-    </script>
+    <audio id="bgm" src="YOUR_BGM_FILE.mp3" loop></audio>
 
-    <div class="mainframe-panel">
-        <aside class="sidebar">
-            <div class="header-info" id="subject-display">SUBJECT_NAME</div>
-            <nav class="nav-menu" id="menu-container"></nav>
-
-            <div class="bottom-widgets">
-                <div class="sidebar-image-container">
-                    <img id="sidebar-img" src="" alt="Sidebar Image">
-                </div>
-                <div class="sys-time-box">
-                    [ SYS TIME ] <span id="clock-display">00:00:00</span>
-                </div>
-                <button class="settings-btn" onclick="openSettings()">[ SYSTEM SETTINGS ]</button>
-                <button id="auth-btn" class="auth-btn" onclick="toggleLogin()">[ ADMIN LOGIN ]</button>
+    <div class="mainframe">
+        <header class="top-bar">
+            <div class="subject-name">실험체: 혜레</div>
+            <div class="bgm-controls">
+                <span>BGM</span>
+                <input type="range" class="bgm-slider" id="bgm-vol" min="0" max="1" step="0.01" value="0.5">
+                <button class="bgm-btn" id="bgm-prev">⏮</button>
+                <button class="bgm-btn" id="bgm-play">▶</button>
+                <button class="bgm-btn" id="bgm-next">⏭</button>
             </div>
-        </aside>
+        </header>
 
-        <main class="content-area">
-            <div class="intro-screen" id="intro-box">
-                <div class="intro-text-area"><span id="typing-output"></span><span class="cursor"></span></div>
-                <div class="btn-group" id="intro-btns">
-                    <button class="btn" id="btn-yes">YES</button>
-                    <button class="btn" id="btn-no">NO</button>
+        <div class="main-layout">
+            <aside class="sidebar">
+                <nav class="nav-menu">
+                    <div class="nav-item">HOME</div>
+                    <div class="nav-item active">ARCHIVE</div>
+                    <div class="nav-item">TRPG LOG</div>
+                    <div class="nav-item">GALLERY</div>
+                    <div class="nav-item">GUESTBOOK</div>
+                </nav>
+
+                <div class="bottom-info">
+                    <img src="https://via.placeholder.com/200x100/0a0e19/5b73d6?text=IMAGE_SLOT" class="sidebar-img" alt="Sidebar Img">
+                    <div class="sys-time">
+                        [ SYSTEM TIME ]<br>
+                        <span id="clock">00 : 00 : 00</span>
+                    </div>
+                    <button class="login-btn" id="auth-btn" onclick="handleLogin()">LOGIN</button>
                 </div>
-            </div>
+            </aside>
 
-            <div class="data-viewer" id="data-box">
-                <div class="content-header">
-                    <div class="content-title-area"><h2 id="content-title">CATEGORY</h2></div>
-                    <div class="admin-controls">
-                        <button class="admin-btn" onclick="openEditor()">EDIT</button>
-                        <button class="admin-btn" onclick="deleteData()">DELETE</button>
+            <main class="content-area">
+                <div class="filter-menu">
+                    <div class="filter-item active">ALL</div>
+                    <div class="filter-item">엘백도</div>
+                    <div class="filter-item">태칸</div>
+                    <div class="filter-item">메이레스</div>
+                </div>
+
+                <div class="write-section">
+                    <input type="text" id="post-category" class="write-input" placeholder="카테고리/작성자 (예: 엘백도/글)" style="width: 48%;">
+                    <input type="date" id="post-date" class="write-input" style="width: 48%; float:right;">
+                    <input type="text" id="post-title" class="write-input" placeholder="제목을 입력하세요">
+                    <textarea id="post-content" class="write-textarea" placeholder="내용 요약을 입력하세요..."></textarea>
+                    <button class="submit-btn" onclick="savePost()">POST RECORD</button>
+                </div>
+
+                <div class="post-list" id="post-container">
+                    <div style="color:var(--text-muted); text-align:center; padding: 2rem;">
+                        데이터를 동기화 중입니다...
                     </div>
                 </div>
-                <div class="content-body" id="content-body">데이터를 불러오는 중입니다...</div>
-            </div>
-
-            <div class="data-editor" id="editor-box">
-                <div class="content-header">
-                    <div class="content-title-area"><h2 id="editor-title">EDIT MODE</h2></div>
-                    <div class="admin-controls" style="display:flex;">
-                        <button class="admin-btn" style="background:var(--theme-color); color:#000;" onclick="saveData()">SAVE</button>
-                        <button class="admin-btn" onclick="closeEditor()">CANCEL</button>
-                    </div>
-                </div>
-                <textarea id="editor-textarea" placeholder="여기에 내용을 작성하세요..."></textarea>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
     <script>
-        let isLoggedIn = false;
-        let currentCategory = ""; // 현재 보고 있는 카테고리 기억
+        // ==========================================
+        // [필수] 파이어베이스 설정값 입력 공간
+        // 파이어베이스 콘솔 -> 프로젝트 설정 -> 내 앱 -> SDK 설정 및 구성에서 복사해서 덮어쓰세요!
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        // 파이어베이스 초기화
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        function init() {
-            // 로컬 스토리지에서 이름과 이미지 불러오기 (없으면 기본값)
-            const savedSubject = localStorage.getItem('erg_subject') || SITE_CONFIG.defaultSubjectName;
-            const savedImage = localStorage.getItem('erg_image') || SITE_CONFIG.defaultImageUrl;
-            
-            document.getElementById('subject-display').innerText = savedSubject;
-            document.getElementById('sidebar-img').src = savedImage;
-            
-            renderMenu();
-            startClock();
-            startTypingEffect();
-        }
+        // ==========================================
+        // 1. 실시간 데이터베이스 (Firestore) 불러오기
+        // ==========================================
+        const postContainer = document.getElementById('post-container');
 
-        /* -- UI 변경 설정 (관리자 전용) -- */
-        function openSettings() {
-            // 1. 실험체 이름 수정
-            const currentName = document.getElementById('subject-display').innerText;
-            const newName = prompt("새로운 메인 타이틀(실험체 이름)을 입력하세요:", currentName);
-            if (newName) {
-                localStorage.setItem('erg_subject', newName);
-                document.getElementById('subject-display').innerText = newName;
-            }
+        // db.collection('archive').orderBy('date', 'desc').onSnapshot() 을 통해 실시간으로 데이터를 가져옵니다.
+        db.collection("archive").orderBy("date", "desc").onSnapshot((snapshot) => {
+            postContainer.innerHTML = ''; // 기존 목록 초기화
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                
+                // HTML 동적 생성
+                const postHTML = `
+                    <div class="post-item">
+                        <div class="post-meta">
+                            <span>${data.category}</span>
+                            <span>${data.date}</span>
+                        </div>
+                        <h3 class="post-title">${data.title}</h3>
+                        <p class="post-excerpt">${data.content}</p>
+                        <div class="admin-controls">
+                            <button class="del-btn" onclick="deletePost('${doc.id}')">삭제</button>
+                        </div>
+                    </div>
+                `;
+                postContainer.innerHTML += postHTML;
+            });
+        }, (error) => {
+            console.error("Firebase 읽기 오류 (설정이 안되었거나 권한이 없습니다):", error);
+            postContainer.innerHTML = `<div style="color:#ff4a4a; padding: 2rem;">데이터베이스 연결이 필요합니다.<br>Firebase 설정을 확인하세요.</div>`;
+        });
 
-            // 2. 이미지 URL 수정
-            const currentImg = document.getElementById('sidebar-img').src;
-            const newImg = prompt("새로운 사이드바 이미지 URL 주소를 입력하세요:\n(웹에 올라가 있는 이미지 링크여야 합니다.)", currentImg);
-            if (newImg) {
-                localStorage.setItem('erg_image', newImg);
-                document.getElementById('sidebar-img').src = newImg;
-            }
-        }
+        // ==========================================
+        // 2. 새 글 작성 (Firestore 저장)
+        // ==========================================
+        function savePost() {
+            const category = document.getElementById('post-category').value;
+            const date = document.getElementById('post-date').value;
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
 
-        /* -- 글쓰기 / 에디터 기능 -- */
-        function loadContent(title) {
-            currentCategory = title;
-            document.getElementById('intro-box').style.display = 'none';
-            document.getElementById('editor-box').style.display = 'none';
-            document.getElementById('data-box').style.display = 'flex';
-            
-            document.getElementById('content-title').innerText = title;
-            
-            // 로컬 스토리지에서 해당 카테고리의 글 불러오기
-            const savedData = localStorage.getItem('erg_post_' + title);
-            if (savedData) {
-                document.getElementById('content-body').innerText = savedData;
-            } else {
-                document.getElementById('content-body').innerHTML = `[ ${title} ] 데이터베이스 기록이 없습니다.<br><br>관리자 로그인 후 우측 상단의 [EDIT] 버튼을 눌러 새 글을 작성하세요.`;
-            }
-        }
+            if(!title || !content) return alert("제목과 내용을 입력하세요.");
 
-        function openEditor() {
-            document.getElementById('data-box').style.display = 'none';
-            document.getElementById('editor-box').style.display = 'flex';
-            document.getElementById('editor-title').innerText = "EDIT: " + currentCategory;
-            
-            const savedData = localStorage.getItem('erg_post_' + currentCategory);
-            document.getElementById('editor-textarea').value = savedData ? savedData : "";
-        }
-
-        function saveData() {
-            const content = document.getElementById('editor-textarea').value;
-            // 로컬 스토리지에 저장 (새로고침해도 유지됨)
-            localStorage.setItem('erg_post_' + currentCategory, content);
-            alert("데이터가 안전하게 저장되었습니다.");
-            loadContent(currentCategory); // 저장 후 뷰어로 복귀
-        }
-
-        function closeEditor() {
-            loadContent(currentCategory);
-        }
-
-        function deleteData() {
-            if(confirm(`[ ${currentCategory} ] 의 데이터를 정말 삭제하시겠습니까?`)) {
-                localStorage.removeItem('erg_post_' + currentCategory);
-                loadContent(currentCategory);
-            }
-        }
-
-        /* -- 기존 기능들 유지 -- */
-        function renderMenu() {
-            const container = document.getElementById('menu-container');
-            SITE_CONFIG.categories.forEach((cat) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'menu-item';
-                const parentTitle = document.createElement('span');
-                parentTitle.className = 'parent-cat';
-                parentTitle.innerText = `> ${cat.name}`;
-                parentTitle.onclick = () => {
-                    itemDiv.classList.toggle('open');
-                    if(cat.sub.length === 0) loadContent(cat.name);
-                };
-                itemDiv.appendChild(parentTitle);
-
-                if (cat.sub.length > 0) {
-                    const subList = document.createElement('div');
-                    subList.className = 'sub-cat-list';
-                    cat.sub.forEach(sub => {
-                        const subItem = document.createElement('span');
-                        subItem.className = 'sub-cat';
-                        subItem.innerText = "- " + sub;
-                        subItem.onclick = () => loadContent(`${cat.name} - ${sub}`);
-                        subList.appendChild(subItem);
-                    });
-                    itemDiv.appendChild(subList);
-                }
-                container.appendChild(itemDiv);
+            db.collection("archive").add({
+                category: category || "기록",
+                date: date || new Date().toISOString().split('T')[0],
+                title: title,
+                content: content,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp() // 정렬을 위한 타임스탬프
+            }).then(() => {
+                // 입력폼 초기화
+                document.getElementById('post-title').value = '';
+                document.getElementById('post-content').value = '';
+            }).catch((error) => {
+                alert("작성 실패: " + error.message);
             });
         }
 
-        function toggleLogin() {
-            const authBtn = document.getElementById('auth-btn');
-            if (isLoggedIn) {
-                isLoggedIn = false;
+        // ==========================================
+        // 3. 글 삭제
+        // ==========================================
+        function deletePost(docId) {
+            if(confirm("이 기록을 삭제하시겠습니까?")) {
+                db.collection("archive").doc(docId).delete();
+            }
+        }
+
+        // ==========================================
+        // 4. 로그인 / 인증 시스템
+        // ==========================================
+        const authBtn = document.getElementById('auth-btn');
+
+        // 인증 상태 감지기 (로그인/로그아웃 시 자동 실행)
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // 로그인 된 상태
+                document.body.classList.add('is-admin');
+                authBtn.innerText = "LOGOUT";
+            } else {
+                // 로그아웃 된 상태
                 document.body.classList.remove('is-admin');
-                authBtn.innerText = "[ ADMIN LOGIN ]";
-                alert("로그아웃 되었습니다.");
+                authBtn.innerText = "LOGIN";
+            }
+        });
+
+        function handleLogin() {
+            if (auth.currentUser) {
+                // 로그아웃 실행
+                auth.signOut();
             } else {
-                const pwd = prompt("SYSTEM ADMIN PASSWORD를 입력하세요:");
-                if (pwd === SITE_CONFIG.masterPassword) {
-                    isLoggedIn = true;
-                    document.body.classList.add('is-admin');
-                    authBtn.innerText = "[ LOGOUT ]";
-                } else if (pwd !== null) {
-                    alert("비밀번호가 일치하지 않습니다.");
+                // 로그인 실행 (이메일/비밀번호 방식)
+                const email = prompt("관리자 이메일을 입력하세요:");
+                const pwd = prompt("비밀번호를 입력하세요:");
+                if(email && pwd) {
+                    auth.signInWithEmailAndPassword(email, pwd)
+                        .catch((error) => alert("로그인 실패: " + error.message));
                 }
             }
         }
 
-        let typeLineIdx = 0, typeCharIdx = 0;
-        function startTypingEffect() {
-            const output = document.getElementById('typing-output');
-            if (typeLineIdx < SITE_CONFIG.introTypingTexts.length) {
-                let currentLine = SITE_CONFIG.introTypingTexts[typeLineIdx];
-                if (typeCharIdx < currentLine.length) {
-                    output.innerHTML += currentLine.charAt(typeCharIdx);
-                    typeCharIdx++;
-                    setTimeout(startTypingEffect, 40);
-                } else {
-                    output.innerHTML += "<br>";
-                    typeLineIdx++;
-                    typeCharIdx = 0;
-                    setTimeout(startTypingEffect, 500);
-                }
-            } else {
-                document.getElementById('intro-btns').style.display = 'flex';
-            }
-        }
+        // ==========================================
+        // 5. 부가 기능 (시계, BGM)
+        // ==========================================
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = 
+                `${String(now.getHours()).padStart(2, '0')} : ${String(now.getMinutes()).padStart(2, '0')} : ${String(now.getSeconds()).padStart(2, '0')}`;
+        }, 1000);
 
-        document.getElementById('btn-yes').onclick = () => { loadContent("HOME"); };
-        document.getElementById('btn-no').onclick = () => { document.getElementById('typing-output').innerHTML = "SYSTEM TERMINATED."; document.getElementById('intro-btns').style.display = 'none'; };
+        // BGM 컨트롤
+        const bgm = document.getElementById('bgm');
+        const playBtn = document.getElementById('bgm-play');
+        const volSlider = document.getElementById('bgm-vol');
+        let isPlaying = false;
 
-        function startClock() {
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('clock-display').innerText = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-            }, 1000);
-        }
+        playBtn.onclick = () => {
+            if(isPlaying) { bgm.pause(); playBtn.innerText = "▶"; } 
+            else { bgm.play(); playBtn.innerText = "⏸"; }
+            isPlaying = !isPlaying;
+        };
 
-        window.onload = init;
+        volSlider.oninput = (e) => { bgm.volume = e.target.value; };
+
     </script>
 </body>
 </html>
