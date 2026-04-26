@@ -1,6 +1,315 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT: ERG ARCHIVE</title>
+    
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+
+    <style id="dynamic-font"></style>
+    <style>
+        :root {
+            --theme-color: #5b73d6;
+            --theme-glow: rgba(91, 115, 214, 0.4);
+            --bg-deep: #050810;
+            --bg-panel: rgba(10, 14, 25, 0.75);
+            --moon-light: #d0d8e8;
+            --moon-dim: #6b7a99;
+            --voyager-gold: #5b73d6; 
+            --voyager-glow: 0 0 15px var(--theme-glow);
+            --border-line: 1px solid rgba(91, 115, 214, 0.2);
+            --border-gold: 1px solid rgba(91, 115, 214, 0.4);
+            --eng-font-family: 'Playfair Display', 'Pretendard', serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            background-color: var(--bg-deep); 
+            background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070');
+            background-size: cover; background-position: center;
+            color: var(--moon-light); 
+            overflow: hidden; 
+            height: 100vh; display: flex; width: 100vw; justify-content: center; align-items: center;
+            backdrop-filter: brightness(0.4);
+            transition: background-image 0.5s ease;
+        }
+
+        .eng-font { font-family: var(--eng-font-family) !important; }
+        .term-font { font-family: 'Share Tech Mono', 'Pretendard', monospace; }
+
+        #intro-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-deep); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; cursor:pointer; transition:opacity 1.5s; }
+        .intro-text { font-size:1.4rem; color:var(--theme-color); text-align:center; line-height:2; text-shadow:var(--voyager-glow); white-space:pre-wrap; margin-bottom: 20px;}
+        .type-cursor { display:inline-block; width:10px; height:20px; background:var(--theme-color); vertical-align:middle; margin-left:4px; animation:blink 1s infinite; }
+        @keyframes blink { 0%, 100% {opacity:1;} 50% {opacity:0;} }
+
+        #app { display:none; width: 85vw; max-width: 1100px; height: 80vh; background: var(--bg-panel); border: 1px solid var(--theme-color); border-radius: 12px; box-shadow: 0 0 30px var(--theme-glow), inset 0 0 20px var(--theme-glow); backdrop-filter: blur(15px); flex-direction:row; position: relative; }
+        
+        .sidebar { width: 260px; flex-shrink: 0; border-right: var(--border-line); padding: 30px 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .logo { font-size: 1.2rem; color: var(--theme-color); text-align: center; cursor: pointer; margin-bottom: 25px; font-weight: bold; letter-spacing: 1px; }
+        
+        .bgm-widget { background: transparent; border: 1px dashed var(--theme-glow); border-radius: 4px; padding: 10px; margin-bottom: 20px; text-align: center; display: none; }
+        .bgm-title { font-size: 0.75rem; color: var(--moon-dim); margin-bottom: 8px; letter-spacing: 1px; }
+
+        #category-list { flex: 1; overflow-y: auto; margin-bottom: 20px; }
+        .nav-item-wrapper { margin-bottom: 0.5rem; }
+        .nav-item { padding: 8px 10px; cursor: pointer; color: var(--moon-dim); font-size: 0.95rem; border-radius: 4px; display: flex; align-items: center; transition: 0.2s; letter-spacing: 1px; }
+        .nav-item:hover { color: var(--theme-color); }
+        .nav-item.active { color: var(--theme-color); font-weight: bold; text-shadow: 0 0 8px var(--theme-glow); }
+        .nav-toggle { margin-right: 8px; font-size: 0.7rem; color: var(--moon-dim); transition: 0.2s; width: 12px; text-align: center; }
+        .nav-toggle.open { transform: rotate(90deg); color: var(--theme-color); }
+
+        .bottom-info { text-align: center; border-top: var(--border-line); padding-top: 20px; }
+        .sys-time { border: 1px dashed var(--theme-glow); padding: 0.5rem; font-size: 0.8rem; color: var(--moon-dim); margin-bottom: 1rem; letter-spacing: 2px; }
+        .btn-ui { width: 100%; padding: 0.5rem; background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color); border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.3s; margin-bottom: 5px; }
+        .btn-ui:hover { background: var(--theme-color); color: #000; }
+        #auth-status { margin-top: 10px; }
+
+        .content-area { flex: 1; padding: 40px 50px; overflow-y: auto; position: relative; }
+        .sidebar-toggle-btn { position: absolute; top: 15px; left: 15px; z-index: 50; background: transparent; border: 1px solid var(--theme-color); color: var(--theme-color); padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .sidebar-toggle-btn:hover { background: var(--theme-color); color: #000; }
+
+        .page { display: none; max-width: 950px; margin: 0 auto; animation: fadeUp 0.5s; }
+        .page.active { display: block; }
+        @keyframes fadeUp { from{opacity:0; transform:translateY(10px);} to{opacity:1;} }
+
+        .view-title { font-size: 1.5rem; color: var(--theme-color); margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+
+        /* 대문 */
+        .home-container { display: flex; flex-direction: column; align-items: center; }
+        .home-hero-img { width: 100%; max-width: 900px; height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid var(--theme-glow); margin-bottom: 30px; display: none; }
+        .home-banner { background: rgba(0,0,0,0.4); padding: 40px; text-align: left; border-radius: 8px; width: 100%; max-width: 600px; border: 1px solid var(--theme-glow); display: flex; flex-direction: column; }
+        #home-maintitle { font-size: 2rem; color: var(--theme-color); margin-bottom: 10px; font-weight: 700; letter-spacing: 2px; }
+        .home-tech-subtitle { font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--theme-color); letter-spacing: 3px; margin-bottom: 20px; }
+        #home-desc-display { font-size: 0.95rem; color: var(--moon-light); line-height: 1.8; white-space: pre-wrap; }
+
+        .home-shortcuts-wrap { margin-top: 50px; width: 100%; border-top: var(--border-line); padding-top: 40px; display: none; }
+        .home-shortcuts-title { font-size: 1.1rem; color: var(--theme-color); margin-bottom: 25px; text-align: center; letter-spacing: 2px; }
+        .home-shortcuts { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .shortcut-card { width: 180px; height: 260px; border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; background: rgba(0,0,0,0.3); }
+        .shortcut-card:hover { border-color: var(--theme-color); box-shadow: var(--voyager-glow); }
+        .shortcut-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; transition: 0.5s; }
+        .shortcut-card:hover .shortcut-img { opacity: 1; transform: scale(1.05); }
+        .shortcut-info { position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 15px 15px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); display: flex; flex-direction: column; }
+        .shortcut-cat { color: #fff; background: var(--theme-color); padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; margin-bottom: 10px; width: fit-content; }
+        .shortcut-title { color: #fff; font-size: 1.1rem; font-weight: bold; }
+
+        /* 게시판 & 에디터 UI */
+        .view-toggles { display: flex; gap: 5px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; border: var(--border-line); }
+        .view-btn { padding: 4px 10px; border: none; background: transparent; border-radius: 2px; color: var(--moon-dim); cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .view-btn.active { background: rgba(91, 115, 214, 0.2); color: var(--theme-color); }
+        #post-list-container.view-list { display: flex; flex-direction: column; }
+        #post-list-container.view-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .post-card { background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; padding: 1.5rem 0; }
+        .post-card:hover { border-color: var(--theme-color); background: rgba(0, 0, 0, 0.4); padding-left: 10px; }
+        .view-list .post-card { display: flex; align-items: center; gap: 20px; padding: 1.5rem 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .view-list .post-thumb { width: 80px; height: 80px; border-radius: 4px; object-fit: cover; }
+        .view-list .post-info-wrap { flex: 1; }
+        .view-gallery .post-card { display: flex; flex-direction: column; padding: 0; border: var(--border-line); border-radius: 8px; }
+        .view-gallery .post-thumb { width: 100%; height: 160px; object-fit: cover; }
+        .view-gallery .post-info-wrap { padding: 15px; }
+        .input-control { width: 100%; padding: 10px; background: rgba(0,0,0,0.4); border: var(--border-line); color: var(--moon-light); border-radius: 4px; outline: none; margin-bottom: 10px; font-family: inherit; }
+        .input-control:focus { border-color: var(--theme-color); }
+        .editor-toolbar { display: flex; gap: 6px; background: rgba(0,0,0,0.3); padding: 10px; border: var(--border-line); border-bottom: none; border-radius: 4px 4px 0 0; flex-wrap: wrap; align-items: center; }
+        .editor-toolbar button { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--moon-light); padding: 4px 10px; cursor: pointer; border-radius: 2px; font-size: 0.85rem; transition: 0.2s; }
+        .editor-toolbar button:hover { background: rgba(91, 115, 214, 0.2); color: var(--theme-color); border-color: var(--theme-color); }
+        .color-picker-wrap, .editor-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--moon-light); padding: 4px 8px; border-radius: 2px; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        #w-content { border-radius: 0 0 4px 4px; min-height: 400px; padding: 20px; background: rgba(0,0,0,0.2); border: var(--border-line); outline: none; overflow-y: auto; line-height: 1.8; color: #fff; }
+        .btn { padding: 8px 16px; border: 1px solid var(--theme-color); color: var(--theme-color); background: none; cursor: pointer; border-radius: 4px; transition: 0.2s; font-weight: bold; }
+        .btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--voyager-glow); }
+        .btn-solid { background: var(--theme-color); color: #000; }
+        .btn-text { background: transparent; border: none; color: var(--moon-dim); cursor: pointer; padding: 4px 6px; font-size: 0.9rem; transition: 0.2s; }
+        .btn-text:hover { color: var(--theme-color); }
+
+        /* 모달창 */
+        .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(5px); }
+        .modal { background: var(--bg-panel); padding: 30px; border-radius: 8px; width: 600px; max-width: 90%; border: 1px solid var(--theme-color); max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px var(--theme-glow); }
+        .modal-label { color: var(--theme-color); font-size: 0.9rem; font-weight: bold; display: block; margin-bottom: 8px; margin-top: 15px; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(91, 115, 214, 0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+    </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="enterSite()">
+    <div id="intro-text-display" class="intro-text"></div><span class="type-cursor"></span>
+</div>
+
+<div id="app">
+    <aside class="sidebar" id="sidebar">
+        <div id="sidebar-logo" class="logo" onclick="goHome()">SUBJECT_NAME</div>
+        
+        <div class="bgm-widget" id="bgm-widget">
+            <div id="bgm-title" class="bgm-title">BGM MODULE</div>
+            <iframe id="bgm-iframe" frameborder="0" allow="autoplay; encrypted-media" style="width:100%; height:80px; border-radius:4px;"></iframe>
+        </div>
+
+        <nav id="category-list"></nav>
+
+        <div class="bottom-info">
+            <div class="sys-time">[ SYSTEM TIME ]<br><span id="clock">00 : 00 : 00</span></div>
+            
+            <div id="admin-actions" style="display:none; flex-direction:column; gap:5px; margin-bottom:10px;">
+                <button class="btn-ui" onclick="openModal('catModal')">CATEGORY MGMT</button>
+                <button class="btn-ui" onclick="openModal('settingModal')">SYSTEM SETTING</button>
+                <button class="btn-ui" id="btn-admin-write" onclick="goWrite()" style="display:none; background:var(--theme-color); color:#000;">WRITE POST</button>
+            </div>
+            
+            <button class="btn-ui" id="btn-guest-write" onclick="goGuestWrite()" style="display:none; margin-bottom:10px;">GUEST WRITE</button>
+            <div id="auth-status" class="btn-ui" onclick="toggleAuth()" style="cursor:pointer; text-align:center;">LOGIN</div>
+        </div>
+    </aside>
+
+    <main class="content-area">
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">≡</button>
+
+        <div id="page-home" class="page active">
+            <div class="home-container">
+                <img id="home-banner-img" class="home-hero-img">
+                <div class="home-banner">
+                    <div id="home-maintitle"></div>
+                    <div style="border-bottom: 1px solid rgba(91,115,214,0.3); padding-bottom: 15px; margin-bottom: 25px;">
+                        <div class="home-tech-subtitle">SYSTEM ONLINE</div>
+                    </div>
+                    <div id="home-desc-display"></div>
+                </div>
+                <div class="home-shortcuts-wrap" id="home-shortcuts-wrap">
+                    <div class="home-shortcuts-title">QUICK ACCESS</div>
+                    <div class="home-shortcuts" id="home-shortcuts"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-board" class="page">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+                <h2 id="board-title" class="view-title" style="margin:0; border:none; padding:0;"></h2>
+                <div class="view-toggles">
+                    <button id="view-toggle-list" class="view-btn active" onclick="setViewMode('list', true)">List</button>
+                    <button id="view-toggle-gallery" class="view-btn" onclick="setViewMode('gallery', true)">Gallery</button>
+                </div>
+            </div>
+            <div id="post-list-container" class="view-list"></div>
+        </div>
+
+        <div id="page-write" class="page">
+            <h2 class="view-title">EDIT RECORD</h2>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <select id="w-category" class="input-control" style="flex:1; margin:0;"></select>
+                <input type="password" id="w-post-pw" class="input-control" style="flex:1; margin:0;" placeholder="글 비밀번호 (게스트용/선택)">
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="text" id="w-title" class="input-control" style="flex:3; margin:0;" placeholder="제목">
+                <input type="text" id="w-author" class="input-control" style="flex:1; margin:0;" placeholder="작성자 닉네임 (선택)">
+            </div>
+            <input type="text" id="w-img-url" class="input-control" placeholder="썸네일/포스터 이미지 URL (https://...) 입력">
+            
+            <div style="margin-bottom:20px;">
+                <div class="editor-toolbar">
+                    <button onclick="formatDoc('bold')" style="font-weight:bold;">B</button>
+                    <button onclick="formatDoc('italic')" style="font-style:italic;">I</button>
+                    <button onclick="formatDoc('insertImage', prompt('이미지 URL'))">IMG</button>
+                    <button onclick="formatDoc('createLink', prompt('URL'))">LINK</button>
+                    <button onclick="openModal('linkModal')">Internal</button>
+                    <button onclick="openTableModal()">Table</button>
+                    <button onclick="insertToggle()">Fold</button>
+                    <button onclick="insertYouTube()">YouTube</button>
+                    <button onclick="toggleHTMLMode()" style="margin-left:auto;">HTML</button>
+                </div>
+                <div id="w-content" contenteditable="true"></div>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-text" onclick="goPage('board')">취소</button>
+                <button class="btn btn-solid" onclick="savePost()">저장</button>
+            </div>
+        </div>
+
+        <div id="page-view" class="page">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:var(--border-line); padding-bottom:15px; margin-bottom:25px;">
+                <div>
+                    <h2 id="v-title" style="font-size:1.8rem; margin-bottom:10px; color:var(--theme-color);"></h2>
+                    <div id="v-info" style="font-size:0.9rem; color:var(--moon-dim);" class="eng-font"></div>
+                </div>
+                <div id="v-admin" style="display:none; gap:10px;">
+                    <button class="btn-text" onclick="goWrite(currentPostId)">수정</button>
+                    <button class="btn-text" style="color:#ff4a4a;" onclick="deletePost()">삭제</button>
+                </div>
+            </div>
+            <div id="v-content" style="min-height:200px; line-height:1.8; font-size:1.05rem;"></div>
+            <div style="margin-top:40px; border-top:var(--border-line); padding-top:20px; display:flex; justify-content:flex-end;">
+                <button class="btn" onclick="goPage('board')">목록으로</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-bg" id="authModal">
+    <div class="modal" style="max-width: 400px;">
+        <h3 style="margin-bottom:20px; color:var(--theme-color); text-align:center;">ADMIN ACCESS</h3>
+        <input type="password" id="auth-pw" class="input-control" placeholder="마스터 비밀번호 입력" onkeydown="if(event.key==='Enter') verifyMasterLogin()">
+        <div style="display:flex; justify-content:center; gap:10px; margin-top:10px;">
+            <button class="btn btn-text" onclick="closeModal('authModal')">취소</button>
+            <button class="btn btn-solid" onclick="verifyMasterLogin()">접속</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-bg" id="catModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">카테고리 관리</h3>
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <input type="text" id="s-new-cat" class="input-control" style="flex:2; margin:0;" placeholder="새 카테고리 이름">
+        <select id="s-parent-cat" class="input-control" style="flex:1; margin:0;"></select>
+        <button class="btn btn-solid" onclick="addCategory()">추가</button>
+    </div>
+    <div id="cat-mgmt-list" style="background:rgba(0,0,0,0.2); padding:15px; border-radius:4px; max-height:400px; overflow-y:auto;"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+        <button class="btn btn-text" onclick="closeModal('catModal')">닫기</button>
+    </div>
+</div></div>
+
+<div class="modal-bg" id="settingModal"><div class="modal">
+    <h3 style="margin-bottom:20px; color:var(--theme-color);">시스템 설정</h3>
+    
+    <label class="modal-label">마스터 비밀번호 변경</label><input type="text" id="s-new-pw" class="input-control" placeholder="비워두면 기존 유지">
+    
+    <label class="modal-label">사이트 배경화면 URL (신규 기능)</label>
+    <input type="text" id="s-bg-img" class="input-control" placeholder="이미지 링크 입력 (비워두면 기본 우주 배경)">
+    
+    <label class="modal-label">홈 화면 배너 이미지 URL</label><input type="text" id="s-home-banner-img" class="input-control">
+    <label class="modal-label">사이트 이름 (로고)</label><textarea id="s-site-name" class="input-control" rows="2"></textarea>
+    <label class="modal-label">홈 메인 타이틀</label><input type="text" id="s-home-title" class="input-control">
+    <label class="modal-label">홈 서브 텍스트</label><textarea id="s-home-desc" class="input-control" rows="3"></textarea>
+    <label class="modal-label">인트로 메인 문구</label><textarea id="s-intro-main" class="input-control" rows="2"></textarea>
+    <label class="modal-label">BGM YouTube ID</label><input type="text" id="s-bgm-id" class="input-control" placeholder="예: jNQXAC9IVRw">
+    
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn btn-text" onclick="closeModal('settingModal')">취소</button>
+        <button class="btn btn-solid" onclick="saveSettings()">저장</button>
+    </div>
+</div></div>
+
+<script>
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('clock').innerText = 
+            `${String(now.getHours()).padStart(2, '0')} : ${String(now.getMinutes()).padStart(2, '0')} : ${String(now.getSeconds()).padStart(2, '0')}`;
+    }, 1000);
+
+    /* ====================================================================
+       [1단계] 아래 공간에 기존 index (1).html 파일의 자바스크립트를 붙여넣으세요.
+       ==================================================================== */
+       
+<!DOCTYPE html>
+<html lang="ko">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Deep Space Archive : Private Terminal</title>
@@ -1094,6 +1403,87 @@
     }
 
     window.onload = init;
+</script>
+</body>
+</html>
+
+       
+       
+    /* ====================================================================
+       [2단계] V7 업데이트 패치 (배경화면 기능 및 PW 전용 로그인)
+       아래 코드는 절대 건드리지 마세요. 위에서 붙여넣은 기존 코드와 알아서 연동됩니다.
+       ==================================================================== */
+    const v7PatchCheck = setInterval(() => {
+        // 기존 코드의 데이터베이스(db) 객체가 로드될 때까지 기다림
+        if(typeof db !== 'undefined' && typeof saveDB !== 'undefined') {
+            clearInterval(v7PatchCheck);
+            
+            // 1. 저장된 배경화면 로드 및 적용
+            if(db.bgImage) {
+                document.body.style.backgroundImage = `url('${db.bgImage}')`;
+                document.getElementById('s-bg-img').value = db.bgImage;
+            }
+
+            // 2. 환경설정 저장 함수 가로채기 (배경화면도 같이 저장되도록 덮어쓰기)
+            const originalSaveSettings = window.saveSettings;
+            window.saveSettings = function() {
+                if(originalSaveSettings) originalSaveSettings(); // 기존 데이터 먼저 저장
+                
+                // 새로 추가된 배경화면 URL 저장 및 즉시 반영
+                const newBgUrl = document.getElementById('s-bg-img').value;
+                db.bgImage = newBgUrl;
+                if(newBgUrl) {
+                    document.body.style.backgroundImage = `url('${newBgUrl}')`;
+                } else {
+                    document.body.style.backgroundImage = `url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070')`;
+                }
+                saveDB(); // 파이어베이스에 업데이트
+            };
+
+            // 3. 아이디(이메일) 없이 비밀번호만으로 인증하기
+            window.verifyMasterLogin = function() {
+                const inputPw = document.getElementById('auth-pw').value;
+                if (inputPw === db.masterPw) {
+                    // 인증 성공! 기존 Firebase Auth를 우회하여 관리자 UI 강제 활성화
+                    sessionStorage.setItem('isAdmin', 'true');
+                    window.isAdmin = true;
+                    document.body.classList.add('is-admin');
+                    
+                    document.getElementById('auth-status').innerText = "LOGOUT";
+                    document.getElementById('admin-actions').style.display = "flex";
+                    document.getElementById('btn-admin-write').style.display = "block";
+                    
+                    closeModal('authModal');
+                    document.getElementById('auth-pw').value = '';
+                    alert("마스터 권한이 확인되었습니다.");
+                    
+                    if(typeof renderNav === 'function') renderNav(); // UI 갱신
+                } else {
+                    alert("비밀번호가 일치하지 않습니다.");
+                }
+            };
+
+            // 로그인/로그아웃 버튼 동작 수정
+            window.toggleAuth = function() {
+                if(window.isAdmin || document.body.classList.contains('is-admin')) {
+                    // 로그아웃 처리
+                    sessionStorage.removeItem('isAdmin');
+                    window.isAdmin = false;
+                    document.body.classList.remove('is-admin');
+                    
+                    document.getElementById('auth-status').innerText = "LOGIN";
+                    document.getElementById('admin-actions').style.display = "none";
+                    document.getElementById('btn-admin-write').style.display = "none";
+                    alert("로그아웃 되었습니다.");
+                    
+                    if(typeof renderNav === 'function') renderNav();
+                } else {
+                    // 로그인 모달창 띄우기
+                    openModal('authModal');
+                }
+            };
+        }
+    }, 100);
 </script>
 </body>
 </html>
